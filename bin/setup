@@ -12,7 +12,7 @@
 
 set -euo pipefail
 
-here=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+here=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)
 plugin_id=$(jq -r .id "$here/manifest.json")
 plugins_dir="$HOME/.config/omarchy/plugins"
 shell_json="$HOME/.config/omarchy/shell.json"
@@ -28,7 +28,8 @@ command -v sunsetr >/dev/null || { echo "sunsetr not installed" >&2; exit 1; }
 command -v jq >/dev/null || { echo "jq required" >&2; exit 1; }
 
 # 1. presets -----------------------------------------------------------------
-cfg_get() { sunsetr get "$1" 2>/dev/null | sed -n "s/^$1=//p" | head -n1; }
+# `sunsetr get key` prints a bare value; `sunsetr get k1 k2` prints key=value.
+cfg_get() { sunsetr get "$1" 2>/dev/null | sed -e "s/^$1=//" | grep -oE '[0-9]+' | head -n1; }
 install_preset() {
   local name="$1" temp_key="$2" gamma_key="$3"
   local dir="$sunsetr_cfg/presets/$name" temp gamma
@@ -49,17 +50,28 @@ install_preset night night_temp night_gamma
 
 # 2. CLI ---------------------------------------------------------------------
 mkdir -p "$HOME/.local/bin"
-ln -sfn "$here/bin/sunsetr-nightlight" "$HOME/.local/bin/sunsetr-nightlight"
-log "linked ~/.local/bin/sunsetr-nightlight"
+# (linked after step 3 so it points at the plugins-dir copy)
 
 # 3. plugin dir --------------------------------------------------------------
+# The checkout should BE ~/.config/omarchy/plugins/<id>: the shell's inotify
+# watcher (hot reload) does not follow symlinks. Copy it there if it lives
+# elsewhere and leave a symlink behind for editing.
 mkdir -p "$plugins_dir"
-if [[ ! -e $plugins_dir/$plugin_id ]]; then
-  ln -sfn "$here" "$plugins_dir/$plugin_id"
-  log "linked $plugins_dir/$plugin_id -> $here"
-elif [[ $(readlink -f "$plugins_dir/$plugin_id") != "$here" ]]; then
-  warn "$plugins_dir/$plugin_id exists and is not this checkout; leaving it"
+target="$plugins_dir/$plugin_id"
+if [[ $(readlink -f "$target" 2>/dev/null || true) == "$here" && ! -L $target ]]; then
+  log "checkout already lives at $target"
+elif [[ -L $target && $(readlink -f "$target") == "$here" ]]; then
+  warn "$target is a symlink to this checkout; hot reload will not work. Move the checkout there instead:"
+  warn "  rm $target && mv $here $target && ln -s $target $here"
+elif [[ -e $target ]]; then
+  warn "$target exists and is not this checkout; leaving it"
+else
+  cp -a "$here" "$target"
+  log "copied checkout to $target (edit it there; $here is left as-is)"
 fi
+here="$(readlink -f "$target")"
+ln -sfn "$here/bin/sunsetr-nightlight" "$HOME/.local/bin/sunsetr-nightlight"
+log "linked ~/.local/bin/sunsetr-nightlight -> $here/bin/sunsetr-nightlight"
 
 # 4. shell.json: hide stock NightLight indicator -----------------------------
 if [[ -f $shell_json ]]; then

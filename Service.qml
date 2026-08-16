@@ -122,15 +122,23 @@ Item {
 
   Process {
     id: applyProcess
+    // sunsetr prints its boxed error report on stdout, so collect both.
+    stdout: StdioCollector {
+      id: applyOut
+      waitForEnd: true
+    }
     stderr: StdioCollector {
       id: applyErr
       waitForEnd: true
     }
     onExited: function(exitCode) {
       if (exitCode !== 0) {
-        var err = Model.stripAnsi(String(applyErr.text || "")).replace(/[┏┣┃┗╹━╸]/g, "").trim()
-        var line = err.split("\n").map(function(l) { return l.trim() }).filter(function(l) { return l !== "" })
-        root.lastError = line.length ? line[0].replace(/^\[ERROR\]\s*/, "") : ("sunsetr exited " + exitCode)
+        var raw = String(applyOut.text || "") + "\n" + String(applyErr.text || "")
+        var err = Model.stripAnsi(raw).replace(/[┏┣┃┗╹━╸]/g, "").trim()
+        var lines = err.split("\n").map(function(l) { return l.trim() }).filter(function(l) { return l !== "" && !/^sunsetr v/.test(l) })
+        var errLine = lines.filter(function(l) { return /^\[ERROR\]/.test(l) })
+        var pick = errLine.length ? errLine[0] : (lines.length ? lines[0] : "")
+        root.lastError = pick ? pick.replace(/^\[ERROR\]\s*/, "") : ("sunsetr exited " + exitCode)
         console.warn("sam.sunsetr:", root.lastError)
       }
       if (root.hasPendingPreset) {

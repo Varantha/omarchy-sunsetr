@@ -31,16 +31,20 @@ tests/             `node tests/model.test.js`
 ## Install
 
 ```bash
-git clone <this repo> ~/Work/omarchy-sunsetr
-~/Work/omarchy-sunsetr/bin/setup
+git clone <this repo> ~/.config/omarchy/plugins/sam.sunsetr
+~/.config/omarchy/plugins/sam.sunsetr/bin/setup
 ```
+
+The checkout has to *be* the plugin directory (not a symlink to it): the
+shell hot-reloads via `inotifywait -r`, which does not follow symlinks. Keep a
+symlink elsewhere for editing if you like (`ln -s ~/.config/omarchy/plugins/sam.sunsetr ~/Work/omarchy-sunsetr`).
 
 `bin/setup` will:
 
 1. create `~/.config/sunsetr/presets/{day,night}/sunsetr.toml` if missing,
    with values from your live `sunsetr get day_temp day_gamma night_temp night_gamma`
-2. link `bin/sunsetr-nightlight` into `~/.local/bin`
-3. symlink the checkout to `~/.config/omarchy/plugins/sam.sunsetr`
+2. copy the checkout to `~/.config/omarchy/plugins/sam.sunsetr` if it lives elsewhere
+3. link `bin/sunsetr-nightlight` into `~/.local/bin`
 4. remove `NightLight` from `omarchy.indicators` in `~/.config/omarchy/shell.json` (backup kept)
 5. add a `trigger.toggle.nightlight` override to `~/.config/omarchy/extensions/omarchy-menu.jsonc`
 6. `omarchy plugin enable sam.sunsetr --before omarchy.indicators`
@@ -54,6 +58,13 @@ o.bind("SUPER + CTRL + N", "Toggle nightlight", "sunsetr-nightlight toggle")
 
 Alternatively `omarchy plugin add <git-url> --enable`, then run `bin/setup --no-enable`
 from the installed copy for steps 1–5.
+
+### Developing
+
+Edits under `~/.config/omarchy/plugins/sam.sunsetr/` trigger a plugin reload
+(bar widget picks it up). In practice the *service* instance can stay stale
+until `omarchy restart shell`, so restart after touching `Service.qml`.
+`node tests/model.test.js` covers the parser/decision logic without the shell.
 
 ## Behaviour
 
