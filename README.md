@@ -11,17 +11,18 @@ that fights sunsetr. This plugin:
 
 - shows sunsetr's real state in the bar (dim = off, bright = night light on)
 - toggles by switching sunsetr presets: `default` (auto schedule) ⇄ forced `day` / `night`
-- disables `omarchy.nightlight` when enabled (via `clonedFrom`, so `omarchy plugin disable sam.sunsetr` restores the stock one)
+- hides the stock `NightLight` bar icon; the stock `omarchy.nightlight` *service* is left dormant (harmless: one failed `hyprctl` probe), so `disabledPlugins` only ever reflects your own choices
+- `bin/setup --uninstall` puts everything back from a pre-install snapshot
 - ships a shell-aware CLI (`sunsetr-nightlight`) for keybindings and the menu
 
 ## Layout
 
 ```
-manifest.json      service + bar-widget, clonedFrom omarchy.nightlight
+manifest.json      service + bar-widget
 Service.qml        polls `sunsetr status`, applies presets, IPC target `sunsetr`
 BarWidget.qml      bar icon + popup (Auto / Day / Night)
 SunsetrModel.js    pure parsing/decision helpers (node-testable)
-bin/setup          idempotent installer for this machine
+bin/setup          idempotent installer / --uninstall for this machine
 bin/sunsetr-nightlight   CLI: toggle|on|off|auto|status|start|stop|refresh
 presets/           day / night sunsetr preset templates
 extensions/        menu override snippet
@@ -41,6 +42,8 @@ symlink elsewhere for editing if you like (`ln -s ~/.config/omarchy/plugins/sam.
 
 `bin/setup` will:
 
+0. snapshot pre-install state to `~/.local/state/omarchy-sunsetr/state.json`
+   (first run only; re-runs keep the original snapshot)
 1. create `~/.config/sunsetr/presets/{day,night}/sunsetr.toml` if missing,
    with values from your live `sunsetr get day_temp day_gamma night_temp night_gamma`
 2. copy the checkout to `~/.config/omarchy/plugins/sam.sunsetr` if it lives elsewhere
@@ -48,6 +51,11 @@ symlink elsewhere for editing if you like (`ln -s ~/.config/omarchy/plugins/sam.
 4. remove `NightLight` from `omarchy.indicators` in `~/.config/omarchy/shell.json` (backup kept)
 5. add a `trigger.toggle.nightlight` override to `~/.config/omarchy/extensions/omarchy-menu.jsonc`
 6. `omarchy plugin enable sam.sunsetr --before omarchy.indicators`
+
+The stock `omarchy.nightlight` service is not disabled. It idles (its
+`hyprctl hyprsunset` probe fails once, then nothing) and its IPC target
+(`nightlight`) does not clash with ours (`sunsetr`). Nothing in the bar or menu
+reaches it any more, only `omarchy toggle nightlight` — avoid that.
 
 Then rebind the key yourself in `~/.config/hypr/bindings.lua`:
 
@@ -105,7 +113,24 @@ omarchy-shell sam.sunsetr refresh|toggle|open|close|debug   # bar widget
 ## Uninstall
 
 ```bash
-omarchy plugin disable sam.sunsetr    # re-enables omarchy.nightlight
-rm ~/.config/omarchy/plugins/sam.sunsetr ~/.local/bin/sunsetr-nightlight
+~/.config/omarchy/plugins/sam.sunsetr/bin/setup --uninstall
+omarchy plugin remove sam.sunsetr
 ```
-Restore `NightLight` in `omarchy.indicators` items and drop the menu override by hand.
+
+`--uninstall` disables the plugin, unlinks the CLI, and restores from the
+snapshot: `omarchy.indicators` items exactly as they were, our menu override
+removed (left alone if it pre-existed or was edited), presets we created
+removed if unmodified, sunsetr back on `default`.
+
+Rules of restraint:
+
+- The stock `NightLight` icon is only put back if `omarchy.nightlight` is
+  still enabled. If you disabled it — before or while this plugin was
+  installed — it stays disabled and iconless. We never re-enable it.
+- If the bar layout was rearranged since install and the snapshot no longer
+  lines up, `NightLight` is appended to whatever `items` an indicators
+  widget has now (never invents an `items` list for one relying on defaults).
+- Keybinding changes are yours; the script prints a reminder.
+
+If you already ran `omarchy plugin remove` first, re-clone anywhere and run
+`bin/setup --uninstall` from there — the snapshot lives outside the plugin dir.
