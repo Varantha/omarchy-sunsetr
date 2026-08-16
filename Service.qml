@@ -70,6 +70,10 @@ Item {
       // and fails on Hyprland >= 0.56, so launch it the way omarchy does.
       "if ! pgrep -x sunsetr >/dev/null; then setsid uwsm-app -- sunsetr >/dev/null 2>&1 & sleep 1.5; fi; " +
       "if [[ -n \"$2\" && \"$0\" != default ]]; then \"$1/sunsetr-ensure-preset\" \"$0\" \"$2\" >/dev/null || exit 1; fi; " +
+      // `sunsetr preset X` while X is already active *deactivates* it (back to
+      // default), so re-applying the current preset must be a no-op here or
+      // `enable`/`disable`/the popup buttons would behave like toggle.
+      "if [[ \"$0\" != default && \"$(sunsetr preset active 2>/dev/null | tail -n1)\" == \"$0\" ]]; then exit 0; fi; " +
       "exec sunsetr preset \"$0\"", target, binDir, role]
     applyProcess.running = true
   }

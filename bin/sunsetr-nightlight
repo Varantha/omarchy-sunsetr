@@ -41,6 +41,18 @@ direct_status() {
      preset:(if $preset == "" then "default" else $preset end)}'
 }
 
+# `sunsetr preset X` while X is already active deactivates it (back to
+# default), so skip the call when the target is already in place; otherwise
+# `on`/`off` would act like toggle.
+apply_preset() {
+  local target=$1
+  ensure_running
+  if [[ $target != default && "$(sunsetr preset active 2>/dev/null | tail -n1)" == "$target" ]]; then
+    return 0
+  fi
+  sunsetr preset "$target"
+}
+
 direct_toggle() {
   local st preset enabled target
   st=$(direct_status)
@@ -50,8 +62,7 @@ direct_toggle() {
   elif [[ $enabled == true ]]; then target=$day_preset
   else target=$night_preset
   fi
-  ensure_running
-  sunsetr preset "$target"
+  apply_preset "$target"
   echo "$target"
 }
 
@@ -63,13 +74,13 @@ case "$cmd" in
     if shell_ok; then omarchy-shell sunsetr toggle; else direct_toggle; fi
     ;;
   on|night|enable)
-    if shell_ok; then omarchy-shell sunsetr enable; else ensure_running; sunsetr preset "$night_preset"; fi
+    if shell_ok; then omarchy-shell sunsetr enable; else apply_preset "$night_preset"; fi
     ;;
   off|day|disable)
-    if shell_ok; then omarchy-shell sunsetr disable; else ensure_running; sunsetr preset "$day_preset"; fi
+    if shell_ok; then omarchy-shell sunsetr disable; else apply_preset "$day_preset"; fi
     ;;
   auto|default)
-    if shell_ok; then omarchy-shell sunsetr auto; else ensure_running; sunsetr preset default; fi
+    if shell_ok; then omarchy-shell sunsetr auto; else apply_preset default; fi
     ;;
   start)
     ensure_running
