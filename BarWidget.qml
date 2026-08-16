@@ -16,7 +16,11 @@ BarWidget {
   readonly property string dayPreset: String(setting("dayPreset", "day"))
   readonly property string nightPreset: String(setting("nightPreset", "night"))
   readonly property int intervalSeconds: Math.max(5, Number(setting("interval", 30)) || 30)
-  readonly property bool hideInactive: setting("hideInactive", false) === true
+  // "hover"  = like the stock indicators: hidden while off, revealed while the
+  //            centre section is hovered (bar.centerSectionRevealHeld)
+  // "always" = always visible, dimmed while off
+  // "never"  = collapsed while off, no hover reveal
+  readonly property string reveal: String(setting("reveal", "hover"))
 
   readonly property bool serviceReady: !!service && service.stateLoaded
   readonly property bool running: serviceReady && service.running
@@ -51,7 +55,9 @@ BarWidget {
     : service.preset === dayPreset ? dayPreset
     : service.preset === nightPreset ? nightPreset : service.preset)
 
-  readonly property bool collapsed: hideInactive && !active && !popupOpen
+  readonly property bool centerRevealed: !!bar && bar.centerSectionRevealHeld === true && bar.centerHoverRevealSuppressed !== true
+  readonly property bool inactiveRevealed: !active && (reveal === "always" || (reveal === "hover" && (centerRevealed || button.tooltipHovered)))
+  readonly property bool collapsed: !active && !popupOpen && !inactiveRevealed
   implicitWidth: collapsed ? 0 : button.implicitWidth
   implicitHeight: button.implicitHeight
   clip: true
@@ -62,6 +68,15 @@ BarWidget {
     function toggle(): void { root.toggle() }
     function open(): void { root.open() }
     function close(): void { root.close() }
+    function debug(): string {
+      return JSON.stringify({
+        hasBar: !!root.bar, hasShell: !!(root.bar && root.bar.shell), hasService: !!root.service,
+        serviceReady: root.serviceReady, active: root.active, reveal: root.reveal,
+        centerRevealed: root.centerRevealed, collapsed: root.collapsed,
+        implicitWidth: root.implicitWidth, width: root.width, height: root.height,
+        buttonVisible: button.visible, buttonWidth: button.implicitWidth, opacity: root.opacity, visible: root.visible
+      })
+    }
   }
 
   BarIconButton {
@@ -69,6 +84,8 @@ BarWidget {
     anchors.fill: parent
     bar: root.bar
     visible: !root.collapsed
+    // Same treatment as the stock indicators: full when on, 0.45 while peeked.
+    opacity: root.active ? 1 : 0.45
     text: "󰔎"
     slotSize: Style.bar.statusSlot
     fontSize: Style.font.caption

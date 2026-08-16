@@ -61,9 +61,10 @@ from the installed copy for steps 1–5.
 
 ### Developing
 
-Edits under `~/.config/omarchy/plugins/sam.sunsetr/` trigger a plugin reload
-(bar widget picks it up). In practice the *service* instance can stay stale
-until `omarchy restart shell`, so restart after touching `Service.qml`.
+Edits under `~/.config/omarchy/plugins/sam.sunsetr/` trigger a plugin reload,
+but in practice both the service and the widget kept running the old code
+until `omarchy restart shell` — restart after every QML edit.
+`omarchy-shell sam.sunsetr debug` dumps the widget's visibility state.
 `node tests/model.test.js` covers the parser/decision logic without the shell.
 
 ## Behaviour
@@ -85,17 +86,20 @@ and fails on current Hyprland).
 ## Widget settings (shell.json)
 
 ```json
-{ "id": "sam.sunsetr", "interval": 30, "dayPreset": "day", "nightPreset": "night", "hideInactive": false }
+{ "id": "sam.sunsetr", "interval": 30, "dayPreset": "day", "nightPreset": "night", "reveal": "hover" }
 ```
 
-`hideInactive: true` collapses the icon to zero width while night light is off.
+`reveal` controls the icon while night light is off: `hover` (default) hides
+it and peeks it at 45% when the bar's centre section is hovered — the same
+gesture the stock indicators use; `always` keeps it visible dimmed; `never`
+keeps it collapsed.
 
 ## IPC
 
 ```
 omarchy-shell sunsetr status|refresh|toggle|enable|disable|auto|start|stop
 omarchy-shell sunsetr preset <name>
-omarchy-shell sam.sunsetr refresh|toggle|open|close   # bar widget
+omarchy-shell sam.sunsetr refresh|toggle|open|close|debug   # bar widget
 ```
 
 ## Uninstall

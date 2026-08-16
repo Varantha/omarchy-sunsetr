@@ -24,13 +24,13 @@
       "interval": 30,
       "dayPreset": "day",
       "nightPreset": "night",
-      "hideInactive": false
+      "reveal": "hover"
     },
     "schema": [
       { "key": "interval", "type": "number", "label": "Poll interval (seconds)" },
       { "key": "dayPreset", "type": "string", "label": "sunsetr preset used to force day" },
       { "key": "nightPreset", "type": "string", "label": "sunsetr preset used to force night" },
-      { "key": "hideInactive", "type": "boolean", "label": "Collapse the icon while night light is off" }
+      { "key": "reveal", "type": "string", "label": "While off: hover (peek with centre section, like stock), always, or never" }
     ]
   }
 }
