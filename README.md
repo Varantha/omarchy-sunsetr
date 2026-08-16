@@ -1,6 +1,6 @@
 # omarchy-sunsetr
 
-Night light for [Omarchy](https://omarchy.org) driven by [sunsetr](https://github.com/psi4j/sunsetr) instead of hyprsunset.
+Vibe Coded Night light for [Omarchy](https://omarchy.org) driven by [sunsetr](https://github.com/psi4j/sunsetr) instead of hyprsunset.
 
 Omarchy's built-in night light (`omarchy.nightlight`) talks to hyprsunset only. If you run sunsetr, the stock bar icon never reflects reality and clicking it spawns hyprsunset on top of sunsetr. This plugin replaces the icon, keybind target and menu entry with ones that drive sunsetr presets.
 
@@ -8,7 +8,7 @@ Omarchy's built-in night light (`omarchy.nightlight`) talks to hyprsunset only. 
 
 ## What you get
 
-- Bar icon `󰔎`. Left click toggles, right click opens the panel above (Auto / Day / Night), middle click refreshes.
+- Replaces Nightlight bar icon at the top of the screen. Left click toggles, right click opens the panel above (Auto / Day / Night), middle click refreshes.
 - Toggle logic: forced preset → back to auto; auto + on → force day; auto + off → force night.
 - `sunsetr-nightlight` CLI for keybindings and scripts.
 - Menu Trigger ▸ Toggle ▸ Nightlight repointed at sunsetr, ✓ when on.
@@ -16,12 +16,12 @@ Omarchy's built-in night light (`omarchy.nightlight`) talks to hyprsunset only. 
 
 ## Requirements
 
-- Omarchy (Quattro shell, Hyprland). Uses `jq`, which Omarchy ships.
-- [`sunsetr`](https://github.com/psi4j/sunsetr) installed, configured (`sunsetr geo`), and autostarted, e.g. in `~/.config/hypr/autostart.lua`:
+- Omarchy Quattro.
+- `sunsetr` installed, configured (`sunsetr geo`), and autostarted, e.g. in `~/.config/hypr/autostart.lua`:
   ```lua
   o.launch_on_start("sunsetr")
   ```
-  Do not autostart hyprsunset.
+- Do not autostart hyprsunset.
 
 ## Install
 
@@ -91,8 +91,6 @@ Restores `omarchy.indicators`, removes the menu override and CLI link, deletes p
 ## Notes
 
 - sunsetr's `--background` uses the pre-0.56 `hyprctl dispatch exec` syntax and fails on current Hyprland; the plugin starts sunsetr with `uwsm-app` instead.
-- While a forced preset is active, sunsetr's schedule is paused until you go back to Auto — that's sunsetr's preset semantics.
-- Developing: after editing QML, `omarchy restart shell` (hot reload leaves the old instances running). `node tests/model.test.js` covers the parser/decision logic. `omarchy-shell varantha.sunsetr debug` dumps widget state.
 
 ## License
 
