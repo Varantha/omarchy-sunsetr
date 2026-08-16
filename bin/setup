@@ -4,6 +4,7 @@
 #   bin/setup              install (idempotent; re-run after git pull)
 #   bin/setup --uninstall  restore what install changed, where that is safe
 #   bin/setup --no-enable  install but do not enable the plugin
+#   bin/setup --yes        skip the confirmation prompt (needed when non-interactive)
 #
 # Install:
 #   1. snapshot pre-install state to ~/.local/state/omarchy-sunsetr/state.json
@@ -39,17 +40,29 @@ stock_id="omarchy.nightlight"
 
 mode=install
 enable=1
+assume_yes=0
 for arg in "$@"; do
   case "$arg" in
     --uninstall) mode=uninstall ;;
     --no-enable) enable=0 ;;
-    -h|--help) sed -n '2,24p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    --yes|-y) assume_yes=1 ;;
+    -h|--help) sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "unknown option: $arg" >&2; exit 1 ;;
   esac
 done
 
 log() { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33mwarn:\033[0m %s\n' "$*" >&2; }
+confirm() { # $1 = summary text
+  (( assume_yes )) && return 0
+  printf '%s\n' "$1"
+  if [[ ! -t 0 ]]; then
+    echo "Not interactive; re-run with --yes to proceed." >&2
+    exit 1
+  fi
+  read -r -p "Continue? [y/N] " reply
+  [[ $reply == [yY]* ]] || { echo "aborted"; exit 1; }
+}
 command -v jq >/dev/null || { echo "jq required" >&2; exit 1; }
 
 sha() { sha256sum "$1" | cut -d' ' -f1; }
@@ -96,29 +109,28 @@ state_set_preset() { # name sha
 # ---------------------------------------------------------------- install
 do_install() {
   command -v sunsetr >/dev/null || { echo "sunsetr not installed" >&2; exit 1; }
+  confirm "This will:
+  - create $sunsetr_cfg/presets/{day,night}/sunsetr.toml if missing
+  - link $cli_link
+  - edit $shell_json (remove NightLight from omarchy.indicators; enable $plugin_id)
+  - edit $menu_ext (override trigger.toggle.nightlight)
+Backups of edited files are kept alongside them; a snapshot for --uninstall goes to $state_file."
   [[ -f $state_file ]] && log "snapshot already exists ($state_file), keeping it" || write_snapshot
 
   # presets ---------------------------------------------------------------
-  # `sunsetr get key` prints a bare value; `sunsetr get k1 k2` prints key=value.
-  cfg_get() { sunsetr get "$1" 2>/dev/null | sed -e "s/^$1=//" | grep -oE '[0-9]+' | head -n1; }
   install_preset() {
-    local name="$1" temp_key="$2" gamma_key="$3"
-    local dir="$sunsetr_cfg/presets/$name" temp gamma
-    if [[ -f $dir/sunsetr.toml ]]; then
-      log "preset '$name' already exists, leaving it alone"
-      return
+    local name="$1" role="$2" out
+    if out=$("$here/bin/sunsetr-ensure-preset" "$name" "$role"); then
+      case $out in
+        created*) state_set_preset "$name" "$(sha "${out#created }")"; log "installed preset '$name' -> ${out#created }" ;;
+        *) log "preset '$name' already exists, leaving it alone" ;;
+      esac
+    else
+      warn "could not create preset '$name' (sunsetr config unreadable?); the plugin will retry on first use"
     fi
-    temp=$(cfg_get "$temp_key"); gamma=$(cfg_get "$gamma_key")
-    [[ -n $temp && -n $gamma ]] || { warn "could not read $temp_key/$gamma_key from sunsetr; skipping preset '$name'"; return; }
-    mkdir -p "$dir"
-    sed -e "s/^static_temp = .*/static_temp = $temp/" \
-        -e "s/^static_gamma = .*/static_gamma = $gamma/" \
-        "$here/presets/$name/sunsetr.toml" >"$dir/sunsetr.toml"
-    state_set_preset "$name" "$(sha "$dir/sunsetr.toml")"
-    log "installed preset '$name' (${temp}K, ${gamma}%) -> $dir/sunsetr.toml"
   }
-  install_preset day day_temp day_gamma
-  install_preset night night_temp night_gamma
+  install_preset day day
+  install_preset night night
 
   # plugin dir ------------------------------------------------------------
   # The checkout should BE ~/.config/omarchy/plugins/<id>: the shell's inotify
@@ -211,6 +223,7 @@ do_uninstall() {
   if [[ ! -f $state_file ]]; then
     warn "no snapshot at $state_file; will only disable the plugin and unlink the CLI"
   fi
+  confirm "This will disable $plugin_id, unlink $cli_link, and restore $shell_json / $menu_ext / sunsetr presets from the snapshot at $state_file (backups kept)."
 
   # plugin off ------------------------------------------------------------
   if omarchy plugin list --json 2>/dev/null | jq -e --arg id "$plugin_id" 'any(.[]; .id == $id and .enabled == true)' >/dev/null; then

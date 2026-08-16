@@ -4,7 +4,7 @@ Night light for [Omarchy](https://omarchy.org) driven by [sunsetr](https://githu
 
 Omarchy's built-in night light (`omarchy.nightlight`) talks to hyprsunset only. If you run sunsetr, the stock bar icon never reflects reality and clicking it spawns hyprsunset on top of sunsetr. This plugin replaces the icon, keybind target and menu entry with ones that drive sunsetr presets.
 
-<p align="center"><img src="docs/popup.png" alt="Night light popup" width="360"></p>
+<p align="center"><img src="preview.png" alt="Night light popup" width="360"></p>
 
 ## What you get
 
@@ -16,8 +16,8 @@ Omarchy's built-in night light (`omarchy.nightlight`) talks to hyprsunset only. 
 
 ## Requirements
 
-- Omarchy with the Quickshell shell (`omarchy-shell`), Hyprland.
-- `sunsetr` installed, configured (`sunsetr geo`), and autostarted, e.g. in `~/.config/hypr/autostart.lua`:
+- Omarchy (Quattro shell, Hyprland). Uses `jq`, which Omarchy ships.
+- [`sunsetr`](https://github.com/psi4j/sunsetr) installed, configured (`sunsetr geo`), and autostarted, e.g. in `~/.config/hypr/autostart.lua`:
   ```lua
   o.launch_on_start("sunsetr")
   ```
@@ -26,17 +26,21 @@ Omarchy's built-in night light (`omarchy.nightlight`) talks to hyprsunset only. 
 ## Install
 
 ```bash
-git clone https://github.com/Varantha/omarchy-sunsetr.git ~/.config/omarchy/plugins/varantha.sunsetr
+omarchy plugin add https://github.com/Varantha/omarchy-sunsetr.git
 ~/.config/omarchy/plugins/varantha.sunsetr/bin/setup
 ```
 
-`bin/setup` (idempotent) will:
+(or `git clone` the repo to `~/.config/omarchy/plugins/varantha.sunsetr` and run `bin/setup` from there.)
 
-1. create `~/.config/sunsetr/presets/{day,night}/sunsetr.toml` if missing (static mode, values from your `sunsetr.toml`)
+The bar icon works as soon as the plugin is enabled. `bin/setup` (idempotent, asks before changing anything, `--yes` to skip) does the rest:
+
+1. create `~/.config/sunsetr/presets/{day,night}/sunsetr.toml` if missing (static mode, values from your `sunsetr.toml`; the plugin also does this on first use)
 2. link `sunsetr-nightlight` into `~/.local/bin`
 3. remove `NightLight` from `omarchy.indicators` in `~/.config/omarchy/shell.json`
 4. override `trigger.toggle.nightlight` in `~/.config/omarchy/extensions/omarchy-menu.jsonc`
-5. `omarchy plugin enable varantha.sunsetr --before omarchy.indicators`
+5. `omarchy plugin enable varantha.sunsetr --before omarchy.indicators` if not already enabled
+
+Edited files get a `.bak.sunsetr.<timestamp>` copy next to them.
 
 Then rebind the key yourself in `~/.config/hypr/bindings.lua`:
 

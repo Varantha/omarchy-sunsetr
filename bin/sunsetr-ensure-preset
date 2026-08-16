@@ -1,0 +1,39 @@
+#!/bin/bash
+# Ensure a sunsetr preset file exists for the plugin's day/night roles.
+#
+# Usage: sunsetr-ensure-preset <preset-name> <day|night>
+#
+# Creates ~/.config/sunsetr/presets/<name>/sunsetr.toml as a static preset with
+# the temperature/gamma from the user's live sunsetr config if it does not
+# exist yet. Existing files are never touched. Prints "created <path>" or
+# "exists <path>". Exit 1 if sunsetr's config could not be read.
+
+set -euo pipefail
+
+name="${1:?preset name}"
+role="${2:?day|night}"
+[[ $role == day || $role == night ]] || { echo "role must be day or night" >&2; exit 2; }
+[[ $name != */* && $name != .* && $name != default ]] || { echo "invalid preset name '$name'" >&2; exit 2; }
+
+dir="$HOME/.config/sunsetr/presets/$name"
+file="$dir/sunsetr.toml"
+if [[ -f $file ]]; then
+  echo "exists $file"
+  exit 0
+fi
+
+# `sunsetr get key` prints a bare value; `sunsetr get k1 k2` prints key=value.
+cfg_get() { sunsetr get "$1" 2>/dev/null | sed -e "s/^$1=//" | grep -oE '[0-9]+' | head -n1; }
+temp=$(cfg_get "${role}_temp")
+gamma=$(cfg_get "${role}_gamma")
+[[ -n $temp && -n $gamma ]] || { echo "could not read ${role}_temp/${role}_gamma from sunsetr" >&2; exit 1; }
+
+mkdir -p "$dir"
+cat >"$file" <<TOML
+# Force $role: created by omarchy-sunsetr (values from your sunsetr.toml at the time).
+# Edit freely; the plugin never overwrites this file.
+transition_mode = "static"
+static_temp = $temp
+static_gamma = $gamma
+TOML
+echo "created $file"

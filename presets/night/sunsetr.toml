@@ -1,5 +1,0 @@
-# Force night: installed by omarchy-sunsetr `bin/setup`.
-# Values are filled from `sunsetr get night_temp night_gamma` at install time.
-transition_mode = "static"
-static_temp = 3300
-static_gamma = 90

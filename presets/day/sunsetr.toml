@@ -1,5 +1,0 @@
-# Force day: installed by omarchy-sunsetr `bin/setup`.
-# Values are filled from `sunsetr get day_temp day_gamma` at install time.
-transition_mode = "static"
-static_temp = 6500
-static_gamma = 100

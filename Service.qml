@@ -58,13 +58,19 @@ Item {
   property bool hasPendingPreset: false
   property string pendingPreset: ""
 
+  readonly property string binDir: String(Qt.resolvedUrl("bin")).replace(/^file:\/\//, "")
+
   function runApply(target) {
     lastError = ""
+    // Our two role presets are created on first use if the user has none, so
+    // the plugin works straight after `omarchy plugin add` without bin/setup.
+    var role = target === nightPreset ? "night" : (target === dayPreset ? "day" : "")
     applyProcess.command = ["bash", "-c",
       // sunsetr's own --background uses the old `hyprctl dispatch exec` syntax
       // and fails on Hyprland >= 0.56, so launch it the way omarchy does.
       "if ! pgrep -x sunsetr >/dev/null; then setsid uwsm-app -- sunsetr >/dev/null 2>&1 & sleep 1.5; fi; " +
-      "exec sunsetr preset \"$0\"", target]
+      "if [[ -n \"$2\" && \"$0\" != default ]]; then \"$1/sunsetr-ensure-preset\" \"$0\" \"$2\" >/dev/null || exit 1; fi; " +
+      "exec sunsetr preset \"$0\"", target, binDir, role]
     applyProcess.running = true
   }
 
