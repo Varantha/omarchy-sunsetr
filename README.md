@@ -2,17 +2,17 @@
 
 Night light for [Omarchy](https://omarchy.org) driven by [sunsetr](https://github.com/psi4j/sunsetr) instead of hyprsunset.
 
-Omarchy's built-in night light (`omarchy.nightlight`) talks to hyprsunset only. If you run sunsetr, the stock bar icon is permanently dead and clicking it spawns hyprsunset on top of sunsetr. This plugin replaces the icon, keybind target and menu entry with ones that drive sunsetr presets.
+Omarchy's built-in night light (`omarchy.nightlight`) talks to hyprsunset only. If you run sunsetr, the stock bar icon never reflects reality and clicking it spawns hyprsunset on top of sunsetr. This plugin replaces the icon, keybind target and menu entry with ones that drive sunsetr presets.
+
+<p align="center"><img src="docs/popup.png" alt="Night light popup" width="360"></p>
 
 ## What you get
 
-- Bar icon `󰔎`: hidden while off, peeks on centre-section hover (like the stock indicators), lit while on.
-  Left = toggle · right = status popup with Auto / Day / Night · middle = refresh.
+- Bar icon `󰔎`. Left click toggles, right click opens the panel above (Auto / Day / Night), middle click refreshes.
 - Toggle logic: forced preset → back to auto; auto + on → force day; auto + off → force night.
 - `sunsetr-nightlight` CLI for keybindings and scripts.
 - Menu Trigger ▸ Toggle ▸ Nightlight repointed at sunsetr, ✓ when on.
 - Starts sunsetr if it isn't running.
-- Clean uninstall from a pre-install snapshot.
 
 ## Requirements
 
@@ -26,18 +26,17 @@ Omarchy's built-in night light (`omarchy.nightlight`) talks to hyprsunset only. 
 ## Install
 
 ```bash
-git clone https://github.com/Varantha/omarchy-sunsetr.git ~/.config/omarchy/plugins/sam.sunsetr
-~/.config/omarchy/plugins/sam.sunsetr/bin/setup
+git clone https://github.com/Varantha/omarchy-sunsetr.git ~/.config/omarchy/plugins/varantha.sunsetr
+~/.config/omarchy/plugins/varantha.sunsetr/bin/setup
 ```
 
 `bin/setup` (idempotent) will:
 
-1. snapshot pre-install state to `~/.local/state/omarchy-sunsetr/state.json`
-2. create `~/.config/sunsetr/presets/{day,night}/sunsetr.toml` if missing (static mode, values from your `sunsetr.toml`)
-3. link `sunsetr-nightlight` into `~/.local/bin`
-4. remove `NightLight` from `omarchy.indicators` in `~/.config/omarchy/shell.json`
-5. override `trigger.toggle.nightlight` in `~/.config/omarchy/extensions/omarchy-menu.jsonc`
-6. `omarchy plugin enable sam.sunsetr --before omarchy.indicators`
+1. create `~/.config/sunsetr/presets/{day,night}/sunsetr.toml` if missing (static mode, values from your `sunsetr.toml`)
+2. link `sunsetr-nightlight` into `~/.local/bin`
+3. remove `NightLight` from `omarchy.indicators` in `~/.config/omarchy/shell.json`
+4. override `trigger.toggle.nightlight` in `~/.config/omarchy/extensions/omarchy-menu.jsonc`
+5. `omarchy plugin enable varantha.sunsetr --before omarchy.indicators`
 
 Then rebind the key yourself in `~/.config/hypr/bindings.lua`:
 
@@ -48,14 +47,14 @@ o.bind("SUPER + CTRL + N", "Toggle nightlight", "sunsetr-nightlight toggle")
 
 If the icon doesn't show up, `omarchy restart shell`.
 
-The stock `omarchy.nightlight` service is left enabled but dormant (its hyprsunset probe fails once, then it idles). Nothing in the bar or menu reaches it any more. `omarchy toggle nightlight` still does — avoid it.
+The stock `omarchy.nightlight` service is left enabled but dormant. Nothing in the bar or menu reaches it any more; `omarchy toggle nightlight` still does — avoid it.
 
 ## Configure
 
 Widget entry in `shell.json` (`bar.layout.center`):
 
 ```json
-{ "id": "sam.sunsetr", "interval": 30, "dayPreset": "day", "nightPreset": "night", "reveal": "hover" }
+{ "id": "varantha.sunsetr", "interval": 30, "dayPreset": "day", "nightPreset": "night", "reveal": "hover" }
 ```
 
 | key | default | meaning |
@@ -63,7 +62,7 @@ Widget entry in `shell.json` (`bar.layout.center`):
 | `interval` | `30` | seconds between `sunsetr status` polls |
 | `dayPreset` | `"day"` | sunsetr preset used to force off |
 | `nightPreset` | `"night"` | sunsetr preset used to force on |
-| `reveal` | `"hover"` | while off: `hover` (peek with centre section), `always` (dimmed), `never` |
+| `reveal` | `"hover"` | icon while off: `hover` (peek with the centre section, like stock indicators), `always` (dimmed), `never` |
 
 **Presets.** `default` is sunsetr's built-in "no preset" state — nothing to create. `day` and `night` are just names: bring your own preset files, or point `dayPreset`/`nightPreset` at ones you already have. Existing preset files are never overwritten. "On" means the current temperature is below 6000 K (same threshold as stock), whatever the preset contains.
 
@@ -74,22 +73,22 @@ sunsetr-nightlight toggle|on|off|auto|status|start|stop|refresh
 omarchy-shell sunsetr status|toggle|enable|disable|auto|preset <name>|start|stop|refresh
 ```
 
-The CLI goes through the shell when it is running (icon updates instantly) and falls back to `sunsetr` directly otherwise. Set `SUNSETR_DAY_PRESET` / `SUNSETR_NIGHT_PRESET` for the fallback path if you renamed the presets.
+The CLI goes through the shell when it is running and falls back to `sunsetr` directly otherwise. Set `SUNSETR_DAY_PRESET` / `SUNSETR_NIGHT_PRESET` for the fallback path if you renamed the presets.
 
 ## Uninstall
 
 ```bash
-~/.config/omarchy/plugins/sam.sunsetr/bin/setup --uninstall
-omarchy plugin remove sam.sunsetr
+~/.config/omarchy/plugins/varantha.sunsetr/bin/setup --uninstall
+omarchy plugin remove varantha.sunsetr
 ```
 
-Restores `omarchy.indicators`, removes our menu override and CLI link, deletes presets we created (if unmodified), returns sunsetr to `default`. The stock `NightLight` icon is only put back if you never disabled `omarchy.nightlight` yourself. Keybindings are yours to revert. Snapshot lives outside the plugin dir, so this works even after `omarchy plugin remove` (re-clone anywhere and run it).
+Restores `omarchy.indicators`, removes the menu override and CLI link, deletes presets it created (if unmodified), returns sunsetr to `default`. Keybindings are yours to revert.
 
 ## Notes
 
 - sunsetr's `--background` uses the pre-0.56 `hyprctl dispatch exec` syntax and fails on current Hyprland; the plugin starts sunsetr with `uwsm-app` instead.
 - While a forced preset is active, sunsetr's schedule is paused until you go back to Auto — that's sunsetr's preset semantics.
-- Developing: after editing QML, `omarchy restart shell` (hot reload leaves the old instances running). `node tests/model.test.js` covers the parser/decision logic. `omarchy-shell sam.sunsetr debug` dumps widget state.
+- Developing: after editing QML, `omarchy restart shell` (hot reload leaves the old instances running). `node tests/model.test.js` covers the parser/decision logic. `omarchy-shell varantha.sunsetr debug` dumps widget state.
 
 ## License
 

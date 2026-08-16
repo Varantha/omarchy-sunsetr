@@ -142,7 +142,7 @@ Item {
         // sunsetr wraps details onto the next line ("... not found at:\n  ~/path").
         if (idx >= 0 && /[:]$/.test(pick) && idx + 1 < lines.length) pick += " " + lines[idx + 1]
         root.lastError = pick ? pick.replace(/^\[ERROR\]\s*/, "") : ("sunsetr exited " + exitCode)
-        console.warn("sam.sunsetr:", root.lastError)
+        console.warn("varantha.sunsetr:", root.lastError)
       }
       if (root.hasPendingPreset) {
         root.hasPendingPreset = false

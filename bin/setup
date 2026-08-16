@@ -1,5 +1,5 @@
 #!/bin/bash
-# Install / uninstall the sam.sunsetr plugin on an Omarchy machine.
+# Install / uninstall the varantha.sunsetr plugin on an Omarchy machine.
 #
 #   bin/setup              install (idempotent; re-run after git pull)
 #   bin/setup --uninstall  restore what install changed, where that is safe
@@ -21,7 +21,7 @@
 #
 # Uninstall reverses 4-7 from the snapshot, removes presets we created (if
 # unmodified), and re-adds the stock NightLight icon only if the stock service
-# is still enabled. Run it BEFORE `omarchy plugin remove sam.sunsetr`.
+# is still enabled. Run it BEFORE `omarchy plugin remove varantha.sunsetr`.
 
 set -euo pipefail
 

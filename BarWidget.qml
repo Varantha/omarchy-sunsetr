@@ -4,15 +4,15 @@ import Quickshell.Io
 import qs.Commons
 import qs.Ui
 
-// Night light bar icon driven by the sam.sunsetr service.
+// Night light bar icon driven by the varantha.sunsetr service.
 //   left   = toggle (auto -> forced opposite -> auto)
 //   right  = status popup with Auto / Day / Night
 //   middle = refresh
 BarWidget {
   id: root
-  moduleName: "sam.sunsetr"
+  moduleName: "varantha.sunsetr"
 
-  readonly property var service: bar?.shell?.serviceFor("sam.sunsetr") ?? null
+  readonly property var service: bar?.shell?.serviceFor("varantha.sunsetr") ?? null
   readonly property string dayPreset: String(setting("dayPreset", "day"))
   readonly property string nightPreset: String(setting("nightPreset", "night"))
   readonly property int intervalSeconds: Math.max(5, Number(setting("interval", 30)) || 30)
@@ -63,7 +63,7 @@ BarWidget {
   clip: true
 
   IpcHandler {
-    target: "sam.sunsetr"
+    target: "varantha.sunsetr"
     function refresh(): void { root.broadcast("refresh") }
     function toggle(): void { root.toggle() }
     function open(): void { root.open() }
