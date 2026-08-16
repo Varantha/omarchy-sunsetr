@@ -1,0 +1,92 @@
+#!/bin/bash
+# Night light control for sunsetr, shell-aware.
+#
+# Routes through the omarchy-shell service when it is loaded (so the bar icon
+# updates immediately) and falls back to talking to sunsetr directly otherwise.
+#
+# Usage: sunsetr-nightlight [toggle|on|off|auto|day|night|status|start|stop|refresh]
+
+set -euo pipefail
+
+cmd="${1:-toggle}"
+day_preset="${SUNSETR_DAY_PRESET:-day}"
+night_preset="${SUNSETR_NIGHT_PRESET:-night}"
+
+shell_ok() {
+  command -v omarchy-shell >/dev/null 2>&1 || return 1
+  omarchy-shell -q sunsetr status >/dev/null 2>&1
+}
+
+ensure_running() {
+  pgrep -x sunsetr >/dev/null && return 0
+  # sunsetr --background uses the pre-0.56 `hyprctl dispatch exec` syntax and
+  # fails on current Hyprland; launch it the same way omarchy autostart does.
+  setsid uwsm-app -- sunsetr >/dev/null 2>&1 &
+  sleep 1.5
+}
+
+direct_status() {
+  local out temp preset
+  out=$(sunsetr status 2>&1 || true)
+  if grep -q "No sunsetr process is running" <<<"$out"; then
+    echo '{"running":false,"enabled":false,"temperature":null,"preset":null}'
+    return
+  fi
+  temp=$(sed -n 's/.*Temperature:[[:space:]]*\([0-9]*\)K.*/\1/p' <<<"$out" | head -n1)
+  preset=$(sed -n 's/.*Active preset:[[:space:]]*\(.*\)$/\1/p' <<<"$out" | head -n1 | tr -d '[:space:]')
+  jq -cn --arg temp "$temp" --arg preset "$preset" '
+    {running:true,
+     enabled:((($temp|tonumber?) // 99999) < 6000),
+     temperature:(($temp|tonumber?) // null),
+     preset:(if $preset == "" then "default" else $preset end)}'
+}
+
+direct_toggle() {
+  local st preset enabled target
+  st=$(direct_status)
+  preset=$(jq -r '.preset // "default"' <<<"$st")
+  enabled=$(jq -r '.enabled' <<<"$st")
+  if [[ $preset != default ]]; then target=default
+  elif [[ $enabled == true ]]; then target=$day_preset
+  else target=$night_preset
+  fi
+  ensure_running
+  sunsetr preset "$target"
+  echo "$target"
+}
+
+case "$cmd" in
+  status)
+    if shell_ok; then omarchy-shell sunsetr status; else direct_status; fi
+    ;;
+  toggle)
+    if shell_ok; then omarchy-shell sunsetr toggle; else direct_toggle; fi
+    ;;
+  on|night|enable)
+    if shell_ok; then omarchy-shell sunsetr enable; else ensure_running; sunsetr preset "$night_preset"; fi
+    ;;
+  off|day|disable)
+    if shell_ok; then omarchy-shell sunsetr disable; else ensure_running; sunsetr preset "$day_preset"; fi
+    ;;
+  auto|default)
+    if shell_ok; then omarchy-shell sunsetr auto; else ensure_running; sunsetr preset default; fi
+    ;;
+  start)
+    ensure_running
+    shell_ok && omarchy-shell -q sunsetr refresh || true
+    ;;
+  stop)
+    sunsetr stop
+    shell_ok && omarchy-shell -q sunsetr refresh || true
+    ;;
+  refresh)
+    shell_ok && omarchy-shell -q sunsetr refresh || true
+    ;;
+  -h|--help|help)
+    sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//'
+    ;;
+  *)
+    echo "sunsetr-nightlight: unknown command '$cmd'" >&2
+    exit 1
+    ;;
+esac

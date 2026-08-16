@@ -1,0 +1,11 @@
+{
+  // Point the stock Trigger > Toggle > Nightlight row at sunsetr instead of
+  // hyprsunset. Merge into ~/.config/omarchy/extensions/omarchy-menu.jsonc
+  // (bin/setup does this for you).
+  "trigger.toggle.nightlight": {
+    "icon": "󰔎",
+    "label": "Nightlight",
+    "action": "sunsetr-nightlight toggle",
+    "checked": "sunsetr-nightlight status | jq -e .enabled"
+  },
+}

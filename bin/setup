@@ -1,0 +1,126 @@
+#!/bin/bash
+# One-shot setup for the sam.sunsetr plugin on an Omarchy machine.
+#
+#   1. Create the sunsetr `day` / `night` presets if missing (values pulled from
+#      the live sunsetr config).
+#   2. Link bin/sunsetr-nightlight into ~/.local/bin.
+#   3. Drop the stock NightLight icon from omarchy.indicators in shell.json.
+#   4. Point the menu's Trigger > Toggle > Nightlight row at sunsetr.
+#   5. Enable the plugin (which also disables omarchy.nightlight).
+#
+# Idempotent; re-run after `git pull`. Pass --no-enable to skip step 5.
+
+set -euo pipefail
+
+here=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+plugin_id=$(jq -r .id "$here/manifest.json")
+plugins_dir="$HOME/.config/omarchy/plugins"
+shell_json="$HOME/.config/omarchy/shell.json"
+menu_ext="$HOME/.config/omarchy/extensions/omarchy-menu.jsonc"
+sunsetr_cfg="$HOME/.config/sunsetr"
+enable=1
+[[ ${1:-} == --no-enable ]] && enable=0
+
+log() { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
+warn() { printf '\033[1;33mwarn:\033[0m %s\n' "$*" >&2; }
+
+command -v sunsetr >/dev/null || { echo "sunsetr not installed" >&2; exit 1; }
+command -v jq >/dev/null || { echo "jq required" >&2; exit 1; }
+
+# 1. presets -----------------------------------------------------------------
+cfg_get() { sunsetr get "$1" 2>/dev/null | sed -n "s/^$1=//p" | head -n1; }
+install_preset() {
+  local name="$1" temp_key="$2" gamma_key="$3"
+  local dir="$sunsetr_cfg/presets/$name" temp gamma
+  if [[ -f $dir/sunsetr.toml ]]; then
+    log "preset '$name' already exists, leaving it alone"
+    return
+  fi
+  temp=$(cfg_get "$temp_key"); gamma=$(cfg_get "$gamma_key")
+  [[ -n $temp && -n $gamma ]] || { warn "could not read $temp_key/$gamma_key from sunsetr; skipping preset '$name'"; return; }
+  mkdir -p "$dir"
+  sed -e "s/^static_temp = .*/static_temp = $temp/" \
+      -e "s/^static_gamma = .*/static_gamma = $gamma/" \
+      "$here/presets/$name/sunsetr.toml" >"$dir/sunsetr.toml"
+  log "installed preset '$name' (${temp}K, ${gamma}%) -> $dir/sunsetr.toml"
+}
+install_preset day day_temp day_gamma
+install_preset night night_temp night_gamma
+
+# 2. CLI ---------------------------------------------------------------------
+mkdir -p "$HOME/.local/bin"
+ln -sfn "$here/bin/sunsetr-nightlight" "$HOME/.local/bin/sunsetr-nightlight"
+log "linked ~/.local/bin/sunsetr-nightlight"
+
+# 3. plugin dir --------------------------------------------------------------
+mkdir -p "$plugins_dir"
+if [[ ! -e $plugins_dir/$plugin_id ]]; then
+  ln -sfn "$here" "$plugins_dir/$plugin_id"
+  log "linked $plugins_dir/$plugin_id -> $here"
+elif [[ $(readlink -f "$plugins_dir/$plugin_id") != "$here" ]]; then
+  warn "$plugins_dir/$plugin_id exists and is not this checkout; leaving it"
+fi
+
+# 4. shell.json: hide stock NightLight indicator -----------------------------
+if [[ -f $shell_json ]]; then
+  cp -a "$shell_json" "$shell_json.bak.sunsetr.$(date +%s)"
+  tmp=$(mktemp)
+  jq '
+    def defaults: ["Dictation","ScreenRecording","Reminder","NightLight","Dnd","StayAwake"];
+    def strip: map(select((if type == "string" then . else .id end) != "NightLight"));
+    (.bar.layout // {}) |= with_entries(
+      .value |= map(
+        if (.id? // .) == "omarchy.indicators" and type == "object" then
+          .items = ((.items // .indicators // defaults) | strip) | del(.indicators)
+        elif . == "omarchy.indicators" then
+          {id: "omarchy.indicators", items: (defaults | strip)}
+        else . end))
+  ' "$shell_json" >"$tmp" && mv "$tmp" "$shell_json"
+  log "removed NightLight from omarchy.indicators in shell.json (backup kept)"
+else
+  warn "$shell_json not found; skip indicator cleanup"
+fi
+
+# 5. menu override -----------------------------------------------------------
+mkdir -p "$(dirname "$menu_ext")"
+[[ -f $menu_ext ]] || printf '{\n}\n' >"$menu_ext"
+if grep -q '"trigger.toggle.nightlight"' "$menu_ext"; then
+  log "menu already overrides trigger.toggle.nightlight"
+else
+  entry='  "trigger.toggle.nightlight": {"icon":"󰔎","label":"Nightlight","action":"sunsetr-nightlight toggle","checked":"sunsetr-nightlight status | jq -e .enabled"},'
+  # Insert before the final closing brace.
+  tmp=$(mktemp)
+  awk -v entry="$entry" '
+    { lines[NR] = $0 }
+    END {
+      last = NR
+      while (last > 0 && lines[last] !~ /^[[:space:]]*}[[:space:]]*$/) last--
+      for (i = 1; i < last; i++) print lines[i]
+      if (last > 0) { print entry; print lines[last] } else { for (i = 1; i <= NR; i++) print lines[i] }
+      for (i = last + 1; i <= NR; i++) print lines[i]
+    }' "$menu_ext" >"$tmp" && mv "$tmp" "$menu_ext"
+  log "added trigger.toggle.nightlight override to $menu_ext"
+fi
+
+# 6. enable ------------------------------------------------------------------
+if (( enable )); then
+  omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true
+  for _ in $(seq 40); do
+    omarchy plugin list --json 2>/dev/null | jq -e --arg id "$plugin_id" 'any(.[]; .id == $id)' >/dev/null && break
+    sleep 0.1
+  done
+  if omarchy plugin list --json 2>/dev/null | jq -e --arg id "$plugin_id" 'any(.[]; .id == $id and .enabled == true)' >/dev/null; then
+    log "$plugin_id already enabled"
+  else
+    omarchy plugin enable "$plugin_id" --before omarchy.indicators 2>/dev/null \
+      || omarchy plugin enable "$plugin_id" --section center
+    log "enabled $plugin_id (omarchy.nightlight now in disabledPlugins)"
+  fi
+fi
+
+cat <<MSG
+
+Done. Bindings to review:
+  ~/.config/hypr/bindings.lua : o.bind("SUPER + CTRL + N", "Toggle nightlight", "sunsetr-nightlight toggle")
+Try:  sunsetr-nightlight status
+MSG

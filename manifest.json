@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "sam.sunsetr",
+  "name": "Night Light (sunsetr)",
+  "version": "0.1.0",
+  "author": "Sam Kiessler",
+  "license": "MIT",
+  "description": "Night light indicator and toggle backed by sunsetr instead of hyprsunset. Replaces the built-in omarchy.nightlight service.",
+  "kinds": ["service", "bar-widget"],
+  "entryPoints": {
+    "service": "Service.qml",
+    "barWidget": "BarWidget.qml"
+  },
+  "omarchy": {
+    "clonedFrom": "omarchy.nightlight"
+  },
+  "barWidget": {
+    "displayName": "Night Light (sunsetr)",
+    "description": "Bar icon showing sunsetr's night light state. Left = toggle, right = status popup, middle = refresh.",
+    "category": "System",
+    "allowMultiple": false,
+    "defaultSection": "center",
+    "defaults": {
+      "interval": 30,
+      "dayPreset": "day",
+      "nightPreset": "night",
+      "hideInactive": false
+    },
+    "schema": [
+      { "key": "interval", "type": "number", "label": "Poll interval (seconds)" },
+      { "key": "dayPreset", "type": "string", "label": "sunsetr preset used to force day" },
+      { "key": "nightPreset", "type": "string", "label": "sunsetr preset used to force night" },
+      { "key": "hideInactive", "type": "boolean", "label": "Collapse the icon while night light is off" }
+    ]
+  }
+}
