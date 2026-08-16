@@ -136,8 +136,11 @@ Item {
         var raw = String(applyOut.text || "") + "\n" + String(applyErr.text || "")
         var err = Model.stripAnsi(raw).replace(/[┏┣┃┗╹━╸]/g, "").trim()
         var lines = err.split("\n").map(function(l) { return l.trim() }).filter(function(l) { return l !== "" && !/^sunsetr v/.test(l) })
-        var errLine = lines.filter(function(l) { return /^\[ERROR\]/.test(l) })
-        var pick = errLine.length ? errLine[0] : (lines.length ? lines[0] : "")
+        var idx = -1
+        for (var i = 0; i < lines.length; i++) if (/^\[ERROR\]/.test(lines[i])) { idx = i; break }
+        var pick = idx >= 0 ? lines[idx] : (lines.length ? lines[0] : "")
+        // sunsetr wraps details onto the next line ("... not found at:\n  ~/path").
+        if (idx >= 0 && /[:]$/.test(pick) && idx + 1 < lines.length) pick += " " + lines[idx + 1]
         root.lastError = pick ? pick.replace(/^\[ERROR\]\s*/, "") : ("sunsetr exited " + exitCode)
         console.warn("sam.sunsetr:", root.lastError)
       }
