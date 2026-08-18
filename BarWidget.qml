@@ -105,7 +105,14 @@ BarWidget {
     bar: root.bar
     owner: root
     open: root.popupOpen
-    contentWidth: popup.fittedContentWidth(Math.max(Style.space(240), column.implicitWidth))
+    // contentWidth is the whole card (padding + border included), so size it
+    // from the natural width of the widest content. Rows are not width-bound
+    // to the column, so `rows.implicitWidth` is their natural width; using
+    // `column.implicitWidth` here would be circular and leave long values
+    // ("05:39:54 (in 8h17m)") running into the edge.
+    readonly property int horizontalInset: padding * 2 + Border.left(borderSpec) + Border.right(borderSpec)
+    contentWidth: popup.fittedContentWidth(Math.max(Style.space(240),
+      Math.max(rows.implicitWidth, buttons.implicitWidth) + popup.horizontalInset))
     contentHeight: popup.fittedContentHeight(column.implicitHeight)
 
     Column {
@@ -124,6 +131,7 @@ BarWidget {
       }
 
       Column {
+        id: rows
         width: parent.width
         spacing: Style.space(2)
 
@@ -140,7 +148,6 @@ BarWidget {
 
           Row {
             required property var modelData
-            width: column.width
             spacing: Style.space(8)
 
             Text {
@@ -173,6 +180,7 @@ BarWidget {
       PanelSeparator { width: parent.width }
 
       ButtonGroup {
+        id: buttons
         anchors.horizontalCenter: parent.horizontalCenter
         focusable: false
         fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
