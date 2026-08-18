@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "varantha.sunsetr",
   "name": "Night Light (sunsetr)",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": "Sam Kiessler",
   "license": "MIT",
   "description": "Night light indicator and toggle backed by sunsetr instead of hyprsunset. Replaces the built-in NightLight bar icon; the stock omarchy.nightlight service is left dormant.",
